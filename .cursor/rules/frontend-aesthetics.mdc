@@ -1,0 +1,35 @@
+---
+description: Creative, distinctive frontend design—avoid generic AI aesthetics
+globs: "**/*.{css,scss,tsx,jsx,html,vue,svelte}"
+alwaysApply: false
+---
+
+# Frontend Aesthetics
+
+Avoid generic "AI slop." Create creative, distinctive frontends that surprise and delight.
+
+## Typography
+- Choose beautiful, unique fonts. Avoid Arial, Inter, Roboto, system fonts.
+- Think outside the box—vary choices across projects; don't converge on Space Grotesk or similar.
+
+## Color & Theme
+- Commit to a cohesive aesthetic. Use CSS variables for consistency.
+- Dominant colors with sharp accents outperform timid, evenly-distributed palettes.
+- Draw from IDE themes and cultural aesthetics. Vary between light and dark themes.
+- Avoid: purple gradients on white backgrounds, clichéd schemes.
+
+## Motion
+- Use animations for effects and micro-interactions.
+- CSS-only for HTML; Motion library for React when available.
+- Prioritize high-impact moments: one well-orchestrated page load with staggered reveals (`animation-delay`) over scattered micro-interactions.
+
+## Backgrounds
+- Create atmosphere and depth. Layer CSS gradients, geometric patterns, or contextual effects.
+- Avoid defaulting to solid colors.
+
+## Avoid
+- Overused fonts (Inter, Roboto, Arial, system fonts)
+- Predictable layouts and cookie-cutter component patterns
+- Design that lacks context-specific character
+
+Interpret creatively. Make unexpected choices that feel genuinely designed for the context.

@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "deck-tutor": {
+      "command": "npx",
+      "args": ["tsx", "deck-tutor-mcp/src/index.ts"]
+    }
+  }
+}

@@ -64,13 +64,15 @@ function App() {
             m.id === assistantId ? { ...m, content: llmResponse!.message } : m
           )
         )
-        await searchWithQuery(
-          llmResponse.scryfallQuery,
-          llmResponse.limit ?? 200,
-          llmResponse.fallbackQuery,
-          content,
-          llmResponse.message
-        )
+        if (!llmResponse.skipSearch && llmResponse.scryfallQuery) {
+          await searchWithQuery(
+            llmResponse.scryfallQuery,
+            llmResponse.limit ?? 200,
+            llmResponse.fallbackQuery,
+            content,
+            llmResponse.message
+          )
+        }
       } else {
         const parsed = parseSearchPrompt(content)
         setMessages((prev) =>

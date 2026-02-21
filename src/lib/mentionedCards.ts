@@ -37,7 +37,16 @@ export function extractMentionedCardNames(prompt: string): string[] {
     if (addName(m[1])) return names
   }
 
-  // 2. Unquoted: "like X, Y, and Z" or "such as X, Y, and Z"
+  // 2. "cheaper than X", "alternatives to X", "similar to X", "instead of X"
+  const refMatch = prompt.match(
+    /(?:cheaper\s+(?:cards?\s+)?(?:than|then)|alternatives?\s+to|similar\s+to|instead\s+of)\s+["']?([^"'.]+?)["']?(?:\s|$|\.|,)/i
+  )
+  if (refMatch) {
+    const n = refMatch[1].trim()
+    if (n.length >= 4) addName(n)
+  }
+
+  // 3. Unquoted: "like X, Y, and Z" or "such as X, Y, and Z"
   const likeMatch = prompt.match(/(?:like|such as)\s+([^.]+?)(?:\.|$|recommend|—)/i)
   if (likeMatch) {
     const phrase = likeMatch[1]
@@ -46,6 +55,25 @@ export function extractMentionedCardNames(prompt: string): string[] {
     for (const part of parts) {
       const n = part.trim().replace(/^["'\u201C\u201D]+|["'\u201C\u201D]+$/g, '').trim()
       if (n.length >= 4 && (n.includes(' ') || n.includes("'"))) {
+        if (addName(n)) return names
+      }
+    }
+  }
+
+  // 4. Markdown bold: **Card Name** (common in tables and lists)
+  for (const m of prompt.matchAll(/\*\*([^*]+)\*\*/g)) {
+    const n = m[1].trim()
+    if (n.length >= 4 && (n.includes(' ') || n.includes(',') || n.includes("'"))) {
+      if (addName(n)) return names
+    }
+  }
+
+  // 5. Table rows: | Card Name | ... (first cell often has card name)
+  for (const line of prompt.split('\n')) {
+    const match = line.match(/^\|?\s*\*\*([^*|]+)\*\*\s*\|/)
+    if (match) {
+      const n = match[1].trim()
+      if (n.length >= 4 && (n.includes(' ') || n.includes(','))) {
         if (addName(n)) return names
       }
     }

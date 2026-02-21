@@ -34,6 +34,12 @@ async function loadMCPContext(): Promise<string> {
     /* ignore */
   }
   try {
+    const standard = await readFile(join(RESOURCES_DIR, 'format-rules', 'standard.md'), 'utf-8')
+    parts.push('## Standard Format Rules\n' + standard)
+  } catch {
+    /* ignore */
+  }
+  try {
     const comparison = await readFile(join(RESOURCES_DIR, 'comparison-priorities.md'), 'utf-8')
     parts.push('## Comparison Priorities\n' + comparison)
   } catch {
@@ -202,10 +208,23 @@ If the user asks for "5 cards", "recommend 10", etc., set "limit" in your JSON t
 CRITICAL - Full commander deck (100 cards, singleton):
 When the user asks to "build a deck", "full commander deck", "complete deck", or similar, return limit 99 (the 99 non-commander cards). ALWAYS use a BROAD query: id:XXX is:commander order:edhrec (replace XXX with the commander's color letters: w,u,b,r,g). Exclude the commander with -!"Commander Name". Example for Maralen (BUG): id:ubg is:commander -!"Maralen, Fae Ascendant" order:edhrec. NEVER use narrow queries like t:land or o:ramp for full deck requests—those return too few cards.
 
-Respond with JSON only, no markdown:
-{"scryfallQuery":"your Scryfall query here","message":"Brief natural language summary","limit":200,"colorIdentity":"ubg"}
+RESPONSE TYPES:
+1. **Rules / game-play questions** (e.g. "if my opponent plays X can I...", "how does X interact with Y", "can I tap in response"):
+   Return skipSearch: true, scryfallQuery: "", and a full markdown message explaining the answer with headers, bullet points, and clear structure. Use the comprehensive rules context when relevant.
 
-For deck requests, include colorIdentity (e.g. "ubg" for Maralen) so we can build a fallback. The scryfallQuery must be valid Scryfall syntax.`
+2. **Deck/card suggestions** (e.g. "creatures for Maralen", "Standard deck with X", "suggest cards for..."):
+   Return a rich markdown message with tables, categories, and explanations. Use headers (##), tables (| Card | Mana | Role |), and bullet lists. Put card names in **bold** in tables. Also include scryfallQuery for the card search. Example table format:
+   | **Card Name** | Mana | Role |
+   |---|---|---|
+   | **Bitterbloom Bearer** | {B}{B} | Creates Faerie tokens |
+
+3. **Simple card search** (e.g. "ramp in green", "cheap removal"):
+   Return scryfallQuery and a brief message.
+
+Respond with JSON only:
+{"scryfallQuery":"query or empty for rules questions","message":"Full markdown for advice/rules, or brief summary for simple search","limit":200,"colorIdentity":"ubg","skipSearch":false}
+
+Set skipSearch: true only for rules/game-play questions. For deck requests, include colorIdentity.`
 
 async function sleep(ms: number): Promise<void> {
   return new Promise((r) => setTimeout(r, ms))
@@ -317,10 +336,12 @@ app.post('/api/chat', async (req, res) => {
       message?: string
       limit?: number
       colorIdentity?: string
+      skipSearch?: boolean
     }
     const scryfallQuery = typeof parsed.scryfallQuery === 'string' ? parsed.scryfallQuery.trim() : ''
     const replyMessage = typeof parsed.message === 'string' ? parsed.message.trim() : 'Here are some cards that might fit.'
     const limit = typeof parsed.limit === 'number' && parsed.limit >= 1 && parsed.limit <= 200 ? parsed.limit : 200
+    const skipSearch = parsed.skipSearch === true || (scryfallQuery === '' && replyMessage.length > 200)
 
     // Fallback for deck requests: when primary returns few cards, use broad query by color identity
     let fallbackQuery: string | undefined
@@ -328,15 +349,16 @@ app.post('/api/chat', async (req, res) => {
       typeof parsed.colorIdentity === 'string'
         ? parsed.colorIdentity.toLowerCase().replace(/[^wubrg]/g, '')
         : scryfallQuery.match(/\bid:([wubrg]+)\b/i)?.[1]?.toLowerCase()
-    if (limit >= 20 && colorId) {
+    if (!skipSearch && limit >= 20 && colorId) {
       fallbackQuery = `id:${colorId} is:commander order:edhrec`
     }
 
-    console.error(`[LLM] query="${scryfallQuery.slice(0, 80)}..." limit=${limit}`)
+    console.error(`[LLM] skipSearch=${skipSearch} query="${scryfallQuery.slice(0, 80)}..." limit=${limit}`)
     res.json({
-      scryfallQuery: scryfallQuery || message,
+      scryfallQuery: skipSearch ? '' : (scryfallQuery || message),
       message: replyMessage,
       limit,
+      skipSearch,
       ...(fallbackQuery && { fallbackQuery }),
     })
   } catch (err) {

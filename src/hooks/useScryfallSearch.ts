@@ -7,7 +7,39 @@ import {
 } from '../lib/scryfallApi'
 import { parseSearchPrompt } from '../lib/promptParser'
 import { fetchCardReasons } from '../lib/llmChat'
+import { extractMentionedCardNames } from '../lib/mentionedCards'
+import { sortByRelevance } from '../lib/cardSort'
 import type { Card } from '../components/CardGrid'
+
+async function fetchCardByName(name: string): Promise<Card | null> {
+  try {
+    const res = await fetch(`/api/scryfall/card?name=${encodeURIComponent(name)}`)
+    if (!res.ok) return null
+    const data = (await res.json()) as {
+      id?: string
+      name?: string
+      typeLine?: string
+      manaCost?: string
+      imageUrl?: string
+      oracleText?: string
+      scryfallUri?: string
+    }
+    if (data.imageUrl && data.name) {
+      return {
+        id: data.id ?? data.name,
+        name: data.name,
+        typeLine: data.typeLine ?? '',
+        manaCost: data.manaCost ?? '',
+        imageUrl: data.imageUrl,
+        oracleText: data.oracleText ?? '',
+        scryfallUri: data.scryfallUri ?? '',
+      }
+    }
+    return null
+  } catch {
+    return null
+  }
+}
 
 const REASONS_DELAY_MS = 6000
 
@@ -36,7 +68,7 @@ export function useScryfallSearch() {
       })
       setTotalCards(tc ?? scryfallCards.length)
       let appCards = scryfallCards.map(toAppCard)
-      setCards(appCards)
+      setCards(sortByRelevance(appCards))
 
       await new Promise((r) => setTimeout(r, REASONS_DELAY_MS))
       const reasons = await fetchCardReasons(prompt, appCards)
@@ -51,7 +83,7 @@ export function useScryfallSearch() {
           return undefined
         }
         appCards = appCards.map((c, i) => ({ ...c, reason: getReason(c, i) }))
-        setCards(appCards)
+        setCards(sortByRelevance(appCards))
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Search failed')
@@ -93,7 +125,22 @@ export function useScryfallSearch() {
         }
         setTotalCards(result.totalCards ?? scryfallCards.length)
         let appCards = scryfallCards.map(toAppCard)
-        setCards(appCards)
+
+        // Exclude cards the user mentioned (e.g. "cheaper than Demonic Tutor") so they don't repeat in results
+        if (prompt?.trim()) {
+          const mentionedNames = extractMentionedCardNames(prompt)
+          if (mentionedNames.length > 0) {
+            const mentioned = await Promise.all(mentionedNames.map(fetchCardByName))
+            const mentionedIds = new Set(
+              mentioned.filter((c): c is Card => c !== null).map((c) => c.id?.toLowerCase())
+            )
+            if (mentionedIds.size > 0) {
+              appCards = appCards.filter((c) => !mentionedIds.has(c.id?.toLowerCase() ?? ''))
+              setTotalCards(appCards.length)
+            }
+          }
+        }
+        setCards(sortByRelevance(appCards))
 
         if (prompt?.trim()) {
           await new Promise((r) => setTimeout(r, REASONS_DELAY_MS))
@@ -109,7 +156,7 @@ export function useScryfallSearch() {
               return undefined
             }
             appCards = appCards.map((c, i) => ({ ...c, reason: getReason(c, i) }))
-            setCards(appCards)
+            setCards(sortByRelevance(appCards))
           }
         }
       } catch (e) {

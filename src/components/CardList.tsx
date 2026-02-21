@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { motion } from 'motion/react'
 import type { Card } from './CardGrid'
 import { SearchingMessage } from './CardGrid'
+import { parseManaValue, sortByRelevance } from '../lib/cardSort'
 import './CardList.css'
 
 const INITIAL_BATCH = 24
@@ -38,8 +39,14 @@ function getSortValue(card: Card, col: SortColumn): string {
 }
 
 function sortCards(cards: Card[], col: SortColumn, dir: SortDir): Card[] {
-  if (col === 'relevance') return cards
+  if (col === 'relevance') return sortByRelevance(cards)
   return [...cards].sort((a, b) => {
+    if (col === 'cost') {
+      const va = parseManaValue(a.manaCost)
+      const vb = parseManaValue(b.manaCost)
+      const cmp = va - vb
+      return dir === 'asc' ? cmp : -cmp
+    }
     const va = getSortValue(a, col)
     const vb = getSortValue(b, col)
     const emptyLast = dir === 'asc' ? 1 : -1

@@ -1,5 +1,7 @@
 import { useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'motion/react'
+import ReactMarkdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
 import { ChatBox } from './ChatBox'
 import { useMentionedCards } from '../hooks/useMentionedCards'
 import type { Card } from './CardGrid'
@@ -11,18 +13,11 @@ export interface Message {
   content: string
 }
 
-function ChatMessage({
-  msg,
-  precedingUserContent,
-  onCardClick,
-}: {
-  msg: Message
-  precedingUserContent: string | null
-  onCardClick?: (card: Card) => void
-}) {
-  const mentionedCards = useMentionedCards(
-    msg.role === 'assistant' ? precedingUserContent : null
+function ChatMessage({ msg, onCardClick }: { msg: Message; onCardClick?: (card: Card) => void }) {
+  const userMentionedCards = useMentionedCards(
+    msg.role === 'user' ? msg.content : null
   )
+  const cardsToShow = msg.role === 'user' ? userMentionedCards : []
 
   return (
     <motion.div
@@ -31,9 +26,9 @@ function ChatMessage({
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.25 }}
     >
-      {msg.role === 'assistant' && mentionedCards.length > 0 && (
+      {cardsToShow.length > 0 && (
         <div className="chat-panel__mentioned-cards">
-          {mentionedCards.map((card) => (
+          {cardsToShow.map((card) => (
             <button
               key={card.id}
               type="button"
@@ -47,7 +42,13 @@ function ChatMessage({
           ))}
         </div>
       )}
-      <p>{msg.content}</p>
+      {msg.role === 'assistant' ? (
+        <div className="chat-panel__markdown">
+          <ReactMarkdown remarkPlugins={[remarkGfm]}>{msg.content}</ReactMarkdown>
+        </div>
+      ) : (
+        <p>{msg.content}</p>
+      )}
     </motion.div>
   )
 }
@@ -136,17 +137,8 @@ export function ChatPanel({ messages, onSend, onCardClick, isCollapsed, onToggle
               <h2 className="chat-panel__title">Deck tutor</h2>
             </div>
             <div className="chat-panel__messages">
-              {messages.map((msg, i) => (
-                <ChatMessage
-                  key={msg.id}
-                  msg={msg}
-                  precedingUserContent={
-                    msg.role === 'assistant' && i > 0 && messages[i - 1]?.role === 'user'
-                      ? messages[i - 1].content
-                      : null
-                  }
-                  onCardClick={onCardClick}
-                />
+              {messages.map((msg) => (
+                <ChatMessage key={msg.id} msg={msg} onCardClick={onCardClick} />
               ))}
               <div ref={messagesEndRef} />
             </div>

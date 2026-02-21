@@ -8,6 +8,8 @@ export interface ChatResponse {
   scryfallQuery: string
   message: string
   limit?: number
+  /** When true, skip card search (e.g. rules questions) */
+  skipSearch?: boolean
   /** Broad fallback query when primary returns few cards (deck building) */
   fallbackQuery?: string
 }
@@ -21,11 +23,12 @@ export async function chatWithLLM(userMessage: string): Promise<ChatResponse | n
     })
 
     if (res.ok) {
-      const data = (await res.json()) as ChatResponse & { limit?: number; fallbackQuery?: string }
+      const data = (await res.json()) as ChatResponse & { limit?: number; fallbackQuery?: string; skipSearch?: boolean }
       return {
         scryfallQuery: data.scryfallQuery?.trim() || userMessage,
         message: data.message?.trim() || 'Here are some cards that might fit.',
         limit: data.limit,
+        skipSearch: data.skipSearch,
         fallbackQuery: data.fallbackQuery?.trim(),
       }
     }

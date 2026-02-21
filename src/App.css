@@ -170,10 +170,11 @@
 }
 
 .app__title {
-  font-family: var(--font-heading);
+  font-family: 'Syne', var(--font-heading);
+  font-weight: 700;
   font-size: 3rem;
   margin: 0 0 12px;
-  letter-spacing: 0.02em;
+  letter-spacing: 0.005em;
   background: linear-gradient(135deg, #c4b5fd 0%, #a78bfa 50%, #8b5cf6 100%);
   -webkit-background-clip: text;
   background-clip: text;

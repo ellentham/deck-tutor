@@ -8,6 +8,8 @@ export interface ChatResponse {
   scryfallQuery: string
   message: string
   limit?: number
+  /** Broad fallback query when primary returns few cards (deck building) */
+  fallbackQuery?: string
 }
 
 export async function chatWithLLM(userMessage: string): Promise<ChatResponse | null> {
@@ -19,11 +21,12 @@ export async function chatWithLLM(userMessage: string): Promise<ChatResponse | n
     })
 
     if (res.ok) {
-      const data = (await res.json()) as ChatResponse & { limit?: number }
+      const data = (await res.json()) as ChatResponse & { limit?: number; fallbackQuery?: string }
       return {
         scryfallQuery: data.scryfallQuery?.trim() || userMessage,
         message: data.message?.trim() || 'Here are some cards that might fit.',
         limit: data.limit,
+        fallbackQuery: data.fallbackQuery?.trim(),
       }
     }
 
@@ -36,5 +39,30 @@ export async function chatWithLLM(userMessage: string): Promise<ChatResponse | n
   } catch {
     // Network error, server not running, etc.
     return null
+  }
+}
+
+export interface CardReason {
+  name: string
+  reason: string
+}
+
+export async function fetchCardReasons(
+  prompt: string,
+  cards: Array<{ name: string; oracleText?: string }>,
+  searchContext?: string
+): Promise<CardReason[]> {
+  if (!prompt.trim() || cards.length === 0) return []
+  try {
+    const res = await fetch('/api/cards/reasons', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ prompt, cards, searchContext: searchContext?.trim() || undefined }),
+    })
+    if (!res.ok) return []
+    const data = (await res.json()) as { reasons?: CardReason[] }
+    return Array.isArray(data.reasons) ? data.reasons : []
+  } catch {
+    return []
   }
 }

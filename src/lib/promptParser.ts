@@ -79,6 +79,10 @@ const SEMANTIC_MAPPINGS: Array<{ pattern: RegExp; replacement: string }> = [
   { pattern: /\bhaste\b/i, replacement: 'kw:haste' },
   { pattern: /\blifelink\b/i, replacement: 'kw:lifelink' },
   { pattern: /\bdeathtouch\b/i, replacement: 'kw:deathtouch' },
+  { pattern: /\bmobilize\b/i, replacement: 'kw:mobilize' },
+  { pattern: /\bmenace\b/i, replacement: 'kw:menace' },
+  { pattern: /\bvigilance\b/i, replacement: 'kw:vigilance' },
+  { pattern: /\bprowess\b/i, replacement: 'kw:prowess' },
   // Commander-specific
   { pattern: /\bcommanders?\b/i, replacement: 'is:commander' },
 ]

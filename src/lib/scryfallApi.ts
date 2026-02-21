@@ -57,14 +57,41 @@ export function getSampleCardsForDisplay(): ScryfallCard[] {
   return list.data ?? []
 }
 
+/** Get oracle text for display (handles double-faced cards) */
+function getOracleText(card: ScryfallCard): string {
+  if (card.oracle_text) return card.oracle_text
+  if (card.card_faces?.length) {
+    return card.card_faces
+      .map((f) => (f.oracle_text ? `${f.name}\n${f.oracle_text}` : f.name))
+      .join('\n\n')
+  }
+  return ''
+}
+
+/** Build Scryfall card page URL when API doesn't provide it */
+function getScryfallUri(card: ScryfallCard): string {
+  if (card.scryfall_uri) return card.scryfall_uri
+  return `https://scryfall.com/search?q=!"${encodeURIComponent(card.name)}"`
+}
+
 /** Map Scryfall card to our Card interface */
-export function toAppCard(card: ScryfallCard): { id: string; name: string; typeLine: string; manaCost: string; imageUrl: string } {
+export function toAppCard(card: ScryfallCard): {
+  id: string
+  name: string
+  typeLine: string
+  manaCost: string
+  imageUrl: string
+  oracleText: string
+  scryfallUri: string
+} {
   return {
     id: card.id,
     name: card.name,
     typeLine: card.type_line ?? '',
     manaCost: card.mana_cost ?? card.card_faces?.[0]?.mana_cost ?? '',
     imageUrl: getCardImageUrl(card),
+    oracleText: getOracleText(card),
+    scryfallUri: getScryfallUri(card),
   }
 }
 
@@ -72,12 +99,12 @@ export function toAppCard(card: ScryfallCard): { id: string; name: string; typeL
 export async function searchCards(
   query: string,
   page = 1
-): Promise<{ cards: ScryfallCard[]; hasMore: boolean }> {
+): Promise<{ cards: ScryfallCard[]; hasMore: boolean; totalCards?: number }> {
   try {
     const cacheKey = searchCacheKey(query, page)
     const cached = await getCached<ScryfallList>(cacheKey)
     if (cached?.data?.length) {
-      return { cards: cached.data, hasMore: cached.has_more }
+      return { cards: cached.data, hasMore: cached.has_more, totalCards: cached.total_cards }
     }
   } catch {
     // IndexedDB unavailable - continue to API
@@ -95,7 +122,7 @@ export async function searchCards(
   if (!response.ok) {
     const err = (await response.json()) as ScryfallError
     if (err.object === 'error' && err.code === 'not_found') {
-      return { cards: [], hasMore: false }
+      return { cards: [], hasMore: false, totalCards: 0 }
     }
     throw new Error(err.details ?? `Scryfall API error: ${response.status}`)
   }
@@ -110,6 +137,7 @@ export async function searchCards(
   return {
     cards: data.data,
     hasMore: data.has_more,
+    totalCards: data.total_cards,
   }
 }
 
@@ -211,7 +239,7 @@ export async function hasOracleCardsCached(): Promise<boolean> {
  */
 export async function searchLocalBulk(
   query: string,
-  limit = 20
+  limit = 2000
 ): Promise<ScryfallCard[]> {
   const cards = await getBulkCached<ScryfallCard[]>('oracle-cards')
   if (!cards || cards.length === 0) return []
@@ -330,20 +358,20 @@ function searchSampleCards(query: string, limit: number): ScryfallCard[] {
 export async function searchFromParsedPrompt(
   parsed: { cardNames: string[]; searchQuery: string; useNamedLookup: boolean },
   options?: { preferLocal?: boolean; limit?: number }
-): Promise<ScryfallCard[]> {
-  const { preferLocal = true, limit = 20 } = options ?? {}
+): Promise<SearchResult> {
+  const { preferLocal = true, limit = 2000 } = options ?? {}
 
   // Named lookup: "Maralen, Fae Ascendant as the commander" -> get that exact card
   if (parsed.useNamedLookup && parsed.cardNames.length > 0) {
     try {
       const card = await getCardByName(parsed.cardNames[0], false)
-      if (card) return [card]
+      if (card) return { cards: [card], totalCards: 1 }
     } catch {
       // API failed - fall back to sample data
       const fallback = searchSampleCards(parsed.cardNames[0], 1)
-      if (fallback.length > 0) return fallback
+      if (fallback.length > 0) return { cards: fallback, totalCards: fallback.length }
     }
-    return []
+    return { cards: [] }
   }
 
   // For semantic queries (not named lookup), skip local bulk - it only matches card names.
@@ -359,8 +387,8 @@ export async function searchFromParsedPrompt(
 export async function searchByQuery(
   query: string,
   options?: { limit?: number }
-): Promise<ScryfallCard[]> {
-  const { limit = 20 } = options ?? {}
+): Promise<SearchResult> {
+  const { limit = 2000 } = options ?? {}
   return searchCardsUnified(query.trim(), { preferLocal: false, limit })
 }
 
@@ -368,28 +396,45 @@ export async function searchByQuery(
  * Unified search: uses local bulk data when cached, otherwise Scryfall API.
  * Always falls back to bundled sample when API returns empty or fails.
  */
+export interface SearchResult {
+  cards: ScryfallCard[]
+  totalCards?: number
+}
+
 export async function searchCardsUnified(
   query: string,
   options?: { preferLocal?: boolean; limit?: number }
-): Promise<ScryfallCard[]> {
-  const { preferLocal = true, limit = 20 } = options ?? {}
+): Promise<SearchResult> {
+  const { preferLocal = true, limit = 2000 } = options ?? {}
   const q = query.trim()
-  if (!q) return []
+  if (!q) return { cards: [] }
 
   // 1. Try local bulk cache
   if (preferLocal) {
     try {
       const local = await searchLocalBulk(q, limit)
-      if (local.length > 0) return local
+      if (local.length > 0) return { cards: local, totalCards: local.length }
     } catch {
       // IndexedDB may be unavailable (private mode, etc.)
     }
   }
 
-  // 2. Try API (with cache)
+  // 2. Try API (with cache), fetch multiple pages if needed
   try {
-    const { cards } = await searchCards(q, 1)
-    if (cards.length > 0) return cards.slice(0, limit)
+    const allCards: ScryfallCard[] = []
+    let totalCards: number | undefined
+    let page = 1
+    let hasMore = true
+    while (hasMore && allCards.length < limit) {
+      const result = await searchCards(q, page)
+      const { cards, hasMore: more, totalCards: tc } = result
+      if (page === 1 && tc !== undefined) totalCards = tc
+      allCards.push(...cards)
+      hasMore = more && cards.length > 0
+      page++
+      if (cards.length === 0) break
+    }
+    if (allCards.length > 0) return { cards: allCards.slice(0, limit), totalCards }
   } catch {
     // API failed (network, CORS, etc.)
   }
@@ -397,7 +442,8 @@ export async function searchCardsUnified(
   // 3. Always fall back to bundled sample when empty
   // Extract meaningful terms from Scryfall syntax for sample matching (o:ramp → ramp, c:g → green)
   const fallbackTerms = extractSearchTermsFromScryfallQuery(q)
-  return searchSampleCards(fallbackTerms, limit)
+  const sampleCards = searchSampleCards(fallbackTerms, limit)
+  return { cards: sampleCards, totalCards: sampleCards.length }
 }
 
 /** Extract searchable terms from Scryfall query for fallback sample matching */

@@ -63,3 +63,13 @@
   opacity: 0.4;
   cursor: not-allowed;
 }
+
+@media (max-width: 379px) {
+  .chat-box {
+    max-width: 100%;
+  }
+
+  .chat-box__inner {
+    padding: 12px 14px;
+  }
+}

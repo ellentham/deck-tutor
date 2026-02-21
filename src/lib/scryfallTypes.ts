@@ -9,6 +9,7 @@ export interface ScryfallCard {
   type_line: string
   mana_cost?: string
   oracle_text?: string
+  scryfall_uri?: string
   image_uris?: {
     small?: string
     normal?: string
@@ -41,6 +42,7 @@ export interface ScryfallCard {
 export interface ScryfallList {
   object: 'list'
   has_more: boolean
+  total_cards?: number
   next_page?: string
   data: ScryfallCard[]
 }

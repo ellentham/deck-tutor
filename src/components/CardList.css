@@ -1,0 +1,155 @@
+.card-list {
+  padding-bottom: 24px;
+}
+
+.card-list--empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 200px;
+}
+
+.card-list__empty-message {
+  font-family: var(--font-heading);
+  font-size: 1.1rem;
+  color: var(--color-text-muted);
+  font-style: italic;
+}
+
+.card-list__empty-message--error {
+  color: var(--color-accent, #e11d48);
+  font-style: normal;
+}
+
+.card-list__table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+.card-list__th {
+  text-align: left;
+  padding: 10px 14px;
+  font-family: var(--font-heading);
+  font-weight: 600;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--color-text-muted);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.card-list__th--rank {
+  width: 48px;
+  min-width: 48px;
+}
+
+.card-list__th--name {
+  min-width: 140px;
+}
+
+.card-list__td--rank {
+  font-size: 0.85rem;
+  color: var(--color-text-muted);
+  text-align: right;
+}
+
+.card-list__th--cost {
+  width: 80px;
+}
+
+.card-list__th--type {
+  min-width: 140px;
+}
+
+.card-list__th--oracle {
+  min-width: 200px;
+}
+
+.card-list__th--reason {
+  min-width: 180px;
+}
+
+.card-list__th--sortable .card-list__sort-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: none;
+  border: none;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  padding: 0;
+  text-align: left;
+  width: 100%;
+  transition: color 0.15s;
+}
+
+.card-list__th--sortable .card-list__sort-btn:hover {
+  color: var(--color-text);
+}
+
+.card-list__sort-icon {
+  font-size: 0.85em;
+  opacity: 0.8;
+}
+
+.card-list__row {
+  transition: background-color 0.15s;
+}
+
+.card-list__row:hover {
+  background-color: rgba(167, 139, 250, 0.06);
+}
+
+.card-list__td {
+  padding: 10px 14px;
+  vertical-align: top;
+  border-bottom: 1px solid var(--color-border);
+  color: var(--color-text);
+}
+
+.card-list__td--oracle {
+  font-size: 0.85rem;
+  line-height: 1.4;
+}
+
+.card-list__td--reason {
+  font-size: 0.85rem;
+  color: var(--color-text-muted);
+  line-height: 1.4;
+  max-width: 220px;
+}
+
+.card-list__link {
+  color: var(--color-accent, #a78bfa);
+  text-decoration: none;
+  font-weight: 500;
+  transition: color 0.15s, text-decoration 0.15s;
+}
+
+.card-list__link:hover {
+  color: var(--color-accent-hover, #c4b5fd);
+  text-decoration: underline;
+}
+
+.card-list__link--button {
+  background: none;
+  border: none;
+  font: inherit;
+  text-align: left;
+  padding: 0;
+  cursor: pointer;
+}
+
+.card-list__mana {
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 0.9em;
+  white-space: nowrap;
+}
+
+.card-list__sentinel {
+  height: 1px;
+  width: 100%;
+  pointer-events: none;
+}

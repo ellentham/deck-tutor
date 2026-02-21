@@ -136,6 +136,13 @@ const RESOURCE_DEFINITIONS = [
     description: 'Official rules for Magic: The Gathering, for looking up specific rule situations.',
     path: 'magic-comprehensive-rules.md',
   },
+  {
+    name: 'scryfall-keywords',
+    uri: 'deck-tutor://resources/scryfall-keywords',
+    title: 'Scryfall Keyword Search Guidance',
+    description: 'When and how to use kw: for keyword abilities (flying, mobilize, etc.) in Scryfall queries.',
+    path: 'scryfall-keywords.md',
+  },
 ] as const
 
 async function readResourceContent(relativePath: string): Promise<string> {

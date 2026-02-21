@@ -37,18 +37,99 @@
   flex-direction: row;
 }
 
+/* Mobile: chat at bottom, column layout */
+@media (max-width: 379px) {
+  .app--active .app-content {
+    flex-direction: column;
+  }
+
+  .app--active .cards-area {
+    flex: 1;
+    min-height: 0;
+  }
+
+  .app--active .cards-area__header {
+    padding: 16px 16px 12px;
+  }
+
+  .app--active .cards-area__scroll {
+    padding: 0 16px 16px;
+  }
+
+  .chat-area--mobile {
+    flex-shrink: 0;
+    width: 100%;
+    height: auto;
+    max-height: 60vh;
+  }
+}
+
 .cards-area {
   flex: 1;
   min-width: 0;
-  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.cards-area__header {
+  flex-shrink: 0;
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  padding: 24px 24px 16px;
+  gap: 16px;
+}
+
+.cards-area__scroll {
+  flex: 1;
+  min-height: 0;
   overflow-y: auto;
+  padding: 0 24px 24px;
   scrollbar-width: none;
   -ms-overflow-style: none;
 }
 
-.cards-area::-webkit-scrollbar {
+.cards-area__scroll::-webkit-scrollbar {
   display: none;
 }
+
+.cards-area__count {
+  margin-right: auto;
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: var(--color-text);
+}
+
+.cards-area__view-toggle {
+  display: flex;
+  gap: 0;
+  background: var(--color-bg-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md, 8px);
+  overflow: hidden;
+}
+
+.cards-area__view-btn {
+  padding: 6px 14px;
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--color-text-muted);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  transition: color 0.15s, background 0.15s;
+}
+
+.cards-area__view-btn:hover {
+  color: var(--color-text);
+}
+
+.cards-area__view-btn--active {
+  color: var(--color-text);
+  background: rgba(167, 139, 250, 0.2);
+}
+
 
 .chat-area {
   flex-shrink: 0;
@@ -104,4 +185,18 @@
   color: var(--color-text-muted);
   margin: 0 0 32px;
   line-height: 1.5;
+}
+
+.app__disclaimer {
+  position: fixed;
+  bottom: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 0.7rem;
+  color: var(--color-text-dim);
+  margin: 0;
+  max-width: 900px;
+  line-height: 1.4;
+  text-align: center;
+  padding: 0 24px;
 }

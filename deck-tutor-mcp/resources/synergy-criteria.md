@@ -11,6 +11,7 @@ Decks have a strategy or objective—counters, tokens, prowess triggers, tribal,
 
 When the user names a commander or key card, **extract ALL relevant strategy elements** and encode them in your Scryfall query:
 
+- **Keywords from oracle text**: Extract abilities like vigilance, mobilize, flying, lifelink → use `kw:vigilance`, `kw:mobilize`, etc. Do NOT add type filters (t:enchantment, t:creature) just because the mentioned cards happen to be that type—focus on the abilities.
 - **Tribal/creature types**: Maralen mentions Elf, Faerie → `(t:elf OR t:faerie)`; dragon tribal → `t:dragon`.
 - **Mechanics**: Animar cares about +1/+1 counters → `o:"+1/+1"` or `o:counter`; sacrifice decks → `o:sacrifice`; draw matters → `o:draw`.
 - **Power/toughness**: Zinnia gets +X/+0 for creatures with base power 1 → `pow:1` or `pow=1`; commanders that care about toughness → `tou:`.

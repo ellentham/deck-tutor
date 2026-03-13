@@ -6,9 +6,9 @@ Build Magic: The Gathering decks with AI guidance. Ask about cards, formats, or 
 
 Deck Tutor is a web app that helps you discover and evaluate Magic cards for deck building. You can:
 
-- **Ask in natural language** — e.g. "ramp cards for Maralen commander deck", "cheaper alternatives to Rhystic Study", "powerful elves for Animar"
-- **Get AI-powered Scryfall queries** — Your prompts are converted into optimized [Scryfall](https://scryfall.com) searches using an LLM (Gemini or OpenAI)
-- **Browse results** — View cards in list or grid layout with images and details
+- **Ask in natural language** — e.g. "ramp cards for Maralen commander deck", "cheaper alternatives to Demonic Tutor", "powerful creatures for Animar"
+- **Get AI-powered results** — Your prompts are converted into [Scryfall](https://scryfall.com) searches using an LLM (Gemini or OpenAI). The backend runs the full pipeline (search + card reasons) and returns cards with explanations.
+- **Browse results** — View cards in list or grid layout with images and details. Filter by color or reason, sort, and paginate.
 - **Use format-aware logic** — Commander rules, color identity, synergy criteria, and budget filters are applied automatically
 
 When the backend is unavailable, a rule-based fallback still converts many prompts into Scryfall syntax.
@@ -30,7 +30,7 @@ When the backend is unavailable, a rule-based fallback still converts many promp
 1. **Clone and install**
 
    ```bash
-   git clone https://github.com/YOUR_USERNAME/deck-tutor.git
+   git clone https://github.com/ellentham/deck-tutor.git
    cd deck-tutor
    npm install
    ```
@@ -71,22 +71,28 @@ When the backend is unavailable, a rule-based fallback still converts many promp
 | `npm run preview` | Preview production build |
 | `npm run lint` | Run ESLint |
 
+## Architecture
+
+See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for a detailed diagram of how user input flows from the frontend through the backend. The backend runs the full pipeline: LLM → Scryfall search → card reasons → returns cards with explanations in a single response. When the backend is unavailable, a rule-based fallback converts prompts to Scryfall syntax on the client.
+
 ## Project Structure
 
 ```
 deck-tutor/
-├── server/           # Express API (LLM chat, Scryfall proxy)
+├── server/           # Express API (LLM chat, Scryfall search + reasons pipeline, proxy)
 ├── src/              # React frontend
-│   ├── components/   # ChatBox, ChatPanel, CardGrid, CardList
-│   ├── hooks/       # useScryfallSearch
-│   └── lib/         # llmChat, promptParser, scryfallApi
-├── deck-tutor-mcp/  # MCP resources (synergy, format rules)
-└── .env             # API keys (copy from .env.example)
+│   ├── components/   # ChatBox, ChatPanel, CardGrid, CardList, CardsFilterPopover, CardsPagination
+│   ├── hooks/        # useScryfallSearch, useMentionedCards, useMediaQuery, useLazyLoad
+│   ├── lib/          # llmChat, promptParser, scryfallApi, cardSort, mentionedCards
+│   └── types/        # Card type definitions
+├── deck-tutor-mcp/   # MCP resources (synergy, format rules) + extract_strategy_from_card tool
+├── docs/             # ARCHITECTURE.md (data flow, API reference)
+└── .env              # API keys (copy from .env.example)
 ```
 
 ## Example Prompts
 
-- "Ramp cards for Maralen, Fae Ascendant commander deck"
+- "Creature cards for Maralen, Fae Ascendant commander deck"
 - "Cheaper alternatives to Demonic Tutor"
 - "10 budget removal spells in white"
 - "Build a full commander deck with Animar as commander"

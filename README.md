@@ -1,6 +1,6 @@
 # Deck Tutor
 
-Build Magic: The Gathering decks with AI guidance. Ask about cards, formats, or strategies in plain English and get tailored Scryfall search results.
+Vibe-coded experiment to assist Magic: The Gathering players in building decks with AI guidance. Ask about cards, formats, or strategies in plain English and get tailored Scryfall search results.
 
 ## What It Does
 
@@ -11,7 +11,7 @@ Deck Tutor is a web app that helps you discover and evaluate Magic cards for dec
 - **Browse results** — View cards in list or grid layout with images and details. Filter by color or reason, sort, and paginate.
 - **Use format-aware logic** — Commander rules, color identity, synergy criteria, and budget filters are applied automatically
 
-When the backend is unavailable, a rule-based fallback still converts many prompts into Scryfall syntax.
+When the backend is unavailable, a rule-based fallback still converts many prompts to Scryfall syntax.
 
 ## Tech Stack
 
@@ -66,7 +66,7 @@ When the backend is unavailable, a rule-based fallback still converts many promp
 |---------|-------------|
 | `npm run dev` | Start backend + frontend (recommended) |
 | `npm run server` | Start backend only |
-| `npm run dev:frontend` | Start frontend only (requires backend on port 3001) |
+| `npm run dev:frontend` | Frontend only (requires backend on port 3001) |
 | `npm run build` | Build for production |
 | `npm run preview` | Preview production build |
 | `npm run lint` | Run ESLint |

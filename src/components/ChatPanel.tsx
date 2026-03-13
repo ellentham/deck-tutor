@@ -1,10 +1,10 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, memo } from 'react'
 import { motion, AnimatePresence } from 'motion/react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { ChatBox } from './ChatBox'
 import { useMentionedCards } from '../hooks/useMentionedCards'
-import type { Card } from './CardGrid'
+import type { Card } from '../types/card'
 import './ChatPanel.css'
 
 export interface Message {
@@ -13,7 +13,7 @@ export interface Message {
   content: string
 }
 
-function ChatMessage({ msg, onCardClick }: { msg: Message; onCardClick?: (card: Card) => void }) {
+const ChatMessage = memo(function ChatMessage({ msg, onCardClick }: { msg: Message; onCardClick?: (card: Card) => void }) {
   const userMentionedCards = useMentionedCards(
     msg.role === 'user' ? msg.content : null
   )
@@ -51,7 +51,7 @@ function ChatMessage({ msg, onCardClick }: { msg: Message; onCardClick?: (card: 
       )}
     </motion.div>
   )
-}
+})
 
 interface ChatPanelProps {
   messages: Message[]

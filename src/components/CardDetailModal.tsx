@@ -1,6 +1,6 @@
 import { useEffect } from 'react'
 import { motion, AnimatePresence } from 'motion/react'
-import type { Card } from './CardGrid'
+import type { Card } from '../types/card'
 import './CardDetailModal.css'
 
 interface CardDetailModalProps {

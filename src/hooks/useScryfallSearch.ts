@@ -4,49 +4,23 @@ import {
   searchByQuery,
   toAppCard,
   getSampleCardsForDisplay,
+  fetchCardByName,
 } from '../lib/scryfallApi'
+import type { ScryfallCard } from '../lib/scryfallTypes'
 import { parseSearchPrompt } from '../lib/promptParser'
 import { fetchCardReasons } from '../lib/llmChat'
+import type { QueryFacet } from '../lib/llmChat'
 import { extractMentionedCardNames } from '../lib/mentionedCards'
-import { sortByRelevance } from '../lib/cardSort'
-import type { Card } from '../components/CardGrid'
+import { sortByRelevance, applyRecommendedRanks } from '../lib/cardSort'
+import type { Card } from '../types/card'
 
-async function fetchCardByName(name: string): Promise<Card | null> {
-  try {
-    const res = await fetch(`/api/scryfall/card?name=${encodeURIComponent(name)}`)
-    if (!res.ok) return null
-    const data = (await res.json()) as {
-      id?: string
-      name?: string
-      typeLine?: string
-      manaCost?: string
-      imageUrl?: string
-      oracleText?: string
-      scryfallUri?: string
-    }
-    if (data.imageUrl && data.name) {
-      return {
-        id: data.id ?? data.name,
-        name: data.name,
-        typeLine: data.typeLine ?? '',
-        manaCost: data.manaCost ?? '',
-        imageUrl: data.imageUrl,
-        oracleText: data.oracleText ?? '',
-        scryfallUri: data.scryfallUri ?? '',
-      }
-    }
-    return null
-  } catch {
-    return null
-  }
-}
-
-const REASONS_DELAY_MS = 6000
+const REASONS_DELAY_MS = 300
 
 export function useScryfallSearch() {
   const [cards, setCards] = useState<Card[]>([])
   const [totalCards, setTotalCards] = useState<number | null>(null)
   const [isLoading, setIsLoading] = useState(false)
+  const [isLoadingReasons, setIsLoadingReasons] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   const search = useCallback(async (prompt: string) => {
@@ -70,8 +44,10 @@ export function useScryfallSearch() {
       let appCards = scryfallCards.map(toAppCard)
       setCards(sortByRelevance(appCards))
 
+      setIsLoadingReasons(true)
       await new Promise((r) => setTimeout(r, REASONS_DELAY_MS))
       const reasons = await fetchCardReasons(prompt, appCards)
+      setIsLoadingReasons(false)
       if (reasons.length > 0) {
         const reasonMap = new Map(reasons.map((r) => [r.name.trim().toLowerCase(), r.reason]))
         const getReason = (card: Card, index: number) => {
@@ -92,6 +68,7 @@ export function useScryfallSearch() {
       setTotalCards(sample.length)
     } finally {
       setIsLoading(false)
+      setIsLoadingReasons(false)
     }
   }, [])
 
@@ -101,7 +78,8 @@ export function useScryfallSearch() {
       limit = 200,
       fallbackQuery?: string,
       prompt?: string,
-      searchContext?: string
+      searchContext?: string,
+      queryFacets?: QueryFacet[]
     ) => {
       if (!query.trim()) {
         setCards([])
@@ -113,20 +91,46 @@ export function useScryfallSearch() {
       setTotalCards(null)
 
       try {
-        let result = await searchByQuery(query, { limit })
-        let scryfallCards = result.cards
-        // If primary returns few cards and we have a fallback, try the broader query
-        if (scryfallCards.length < 24 && fallbackQuery?.trim()) {
-          const fallbackResult = await searchByQuery(fallbackQuery.trim(), { limit })
-          if (fallbackResult.cards.length > scryfallCards.length) {
-            scryfallCards = fallbackResult.cards
-            result = fallbackResult
+        let scryfallCards: ScryfallCard[] = []
+        let totalFromApi: number | undefined
+
+        if (queryFacets && queryFacets.length > 1) {
+          // Multi-facet: run all queries in parallel, merge and deduplicate
+          const perFacetLimit = Math.max(75, Math.ceil(limit / queryFacets.length))
+          const results = await Promise.all(
+            queryFacets.map((f) =>
+              searchByQuery(f.query, { limit: perFacetLimit }).catch(() => ({ cards: [], totalCards: 0 }))
+            )
+          )
+
+          const seen = new Set<string>()
+          for (const result of results) {
+            for (const card of result.cards) {
+              if (!seen.has(card.id)) {
+                seen.add(card.id)
+                scryfallCards.push(card)
+              }
+            }
+          }
+          totalFromApi = scryfallCards.length
+        } else {
+          // Single query (original path)
+          const result = await searchByQuery(query, { limit })
+          scryfallCards = result.cards
+          totalFromApi = result.totalCards ?? scryfallCards.length
+
+          if (scryfallCards.length < 24 && fallbackQuery?.trim()) {
+            const fallbackResult = await searchByQuery(fallbackQuery.trim(), { limit })
+            if (fallbackResult.cards.length > scryfallCards.length) {
+              scryfallCards = fallbackResult.cards
+              totalFromApi = fallbackResult.totalCards ?? scryfallCards.length
+            }
           }
         }
-        setTotalCards(result.totalCards ?? scryfallCards.length)
-        let appCards = scryfallCards.map(toAppCard)
 
-        // Exclude cards the user mentioned (e.g. "cheaper than Demonic Tutor") so they don't repeat in results
+        setTotalCards(totalFromApi)
+        let appCards: Card[] = scryfallCards.map(toAppCard)
+
         if (prompt?.trim()) {
           const mentionedNames = extractMentionedCardNames(prompt)
           if (mentionedNames.length > 0) {
@@ -140,11 +144,17 @@ export function useScryfallSearch() {
             }
           }
         }
+
+        if (searchContext?.trim()) {
+          appCards = applyRecommendedRanks(appCards, searchContext)
+        }
         setCards(sortByRelevance(appCards))
 
         if (prompt?.trim()) {
+          setIsLoadingReasons(true)
           await new Promise((r) => setTimeout(r, REASONS_DELAY_MS))
           const reasons = await fetchCardReasons(prompt, appCards, searchContext)
+          setIsLoadingReasons(false)
           if (reasons.length > 0) {
             const reasonMap = new Map(reasons.map((r) => [r.name.trim().toLowerCase(), r.reason]))
             const getReason = (card: Card, index: number) => {
@@ -166,6 +176,7 @@ export function useScryfallSearch() {
         setTotalCards(sample.length)
       } finally {
         setIsLoading(false)
+        setIsLoadingReasons(false)
       }
     },
     []
@@ -175,7 +186,14 @@ export function useScryfallSearch() {
     setCards([])
     setTotalCards(null)
     setError(null)
+    setIsLoadingReasons(false)
   }, [])
 
-  return { cards, totalCards, isLoading, error, search, searchWithQuery, clearCards }
+  const setCardsFromResponse = useCallback((newCards: Card[], total?: number) => {
+    setCards(newCards)
+    setTotalCards(total ?? newCards.length)
+    setError(null)
+  }, [])
+
+  return { cards, totalCards, isLoading, isLoadingReasons, error, search, searchWithQuery, clearCards, setCardsFromResponse }
 }

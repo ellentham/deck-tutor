@@ -1,17 +1,27 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useMemo } from 'react'
 import { motion } from 'motion/react'
 import { ChatBox } from './components/ChatBox'
 import { ChatPanel, type Message } from './components/ChatPanel'
-import { CardGrid, type Card } from './components/CardGrid'
+import type { Card } from './types/card'
+import { CardGrid } from './components/CardGrid'
 import { CardList } from './components/CardList'
 import { CardDetailModal } from './components/CardDetailModal'
+import { CardsFilterPopover } from './components/CardsFilterPopover'
+import { CardsPagination } from './components/CardsPagination'
 import { useScryfallSearch } from './hooks/useScryfallSearch'
 import { useMediaQuery } from './hooks/useMediaQuery'
 import { chatWithLLM } from './lib/llmChat'
 import { parseSearchPrompt } from './lib/promptParser'
+import {
+  filterCardsByColors,
+  filterCardsByReasons,
+  sortCardsBy,
+  type SortOption,
+} from './lib/cardSort'
 import './App.css'
 
 type CardViewMode = 'grid' | 'list'
+const DEFAULT_PAGE_SIZE = 24
 
 function App() {
   const [messages, setMessages] = useState<Message[]>([])
@@ -21,7 +31,12 @@ function App() {
   const [backendOk, setBackendOk] = useState<boolean | null>(null)
   const [globalCardCount, setGlobalCardCount] = useState<number | null>(null)
   const [isResponding, setIsResponding] = useState(false)
-  const { cards, totalCards, isLoading, error, search, searchWithQuery, clearCards } = useScryfallSearch()
+  const [selectedColors, setSelectedColors] = useState<Set<string>>(new Set())
+  const [selectedReasons, setSelectedReasons] = useState<Set<string>>(new Set())
+  const [sortOption, setSortOption] = useState<SortOption>('default')
+  const [page, setPage] = useState(1)
+  const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE)
+  const { cards, isLoading, isLoadingReasons, error, search, searchWithQuery, clearCards, setCardsFromResponse } = useScryfallSearch()
   const cardsAreaRef = useRef<HTMLDivElement>(null)
   const isMobile = useMediaQuery('(max-width: 379px)')
 
@@ -43,11 +58,30 @@ function App() {
 
   const hasPrompt = messages.length > 0
 
+  const { paginatedCards, filteredTotal } = useMemo(() => {
+    let list = filterCardsByColors(cards, selectedColors)
+    list = filterCardsByReasons(list, selectedReasons)
+    list = sortCardsBy(list, sortOption)
+    const total = list.length
+    const start = (page - 1) * pageSize
+    const paginated = list.slice(start, start + pageSize)
+    return { paginatedCards: paginated, filteredTotal: total }
+  }, [cards, selectedColors, selectedReasons, sortOption, page, pageSize])
+
+  useEffect(() => {
+    const maxPage = Math.max(1, Math.ceil(filteredTotal / pageSize))
+    if (page > maxPage) setPage(maxPage)
+  }, [filteredTotal, pageSize, page])
+
   const handleSend = async (content: string) => {
     const userMsg: Message = { id: crypto.randomUUID(), role: 'user', content }
     setMessages((prev) => [...prev, userMsg])
     setIsResponding(true)
     clearCards()
+    setSelectedColors(new Set())
+    setSelectedReasons(new Set())
+    setSortOption('default')
+    setPage(1)
 
     const assistantId = crypto.randomUUID()
     setMessages((prev) => [
@@ -64,13 +98,20 @@ function App() {
             m.id === assistantId ? { ...m, content: llmResponse!.message } : m
           )
         )
-        if (!llmResponse.skipSearch && llmResponse.scryfallQuery) {
+        if (llmResponse.skipSearch) {
+          // Rules question — no cards
+        } else if (llmResponse.cards && llmResponse.cards.length > 0) {
+          // Server returned cards with reasons — use directly
+          setCardsFromResponse(llmResponse.cards, llmResponse.totalCards)
+        } else if (llmResponse.scryfallQuery) {
+          // Fallback: server didn't return cards (e.g. pipeline error) — run client-side search
           await searchWithQuery(
             llmResponse.scryfallQuery,
             llmResponse.limit ?? 200,
             llmResponse.fallbackQuery,
             content,
-            llmResponse.message
+            llmResponse.message,
+            llmResponse.scryfallQueries
           )
         }
       } else {
@@ -107,44 +148,81 @@ function App() {
               <div className="cards-area__header">
                 {cards.length > 0 && (
                   <span className="cards-area__count">
-                    {(totalCards ?? cards.length).toLocaleString()} card{(totalCards ?? cards.length) !== 1 ? 's' : ''} found
+                    {filteredTotal.toLocaleString()} card{filteredTotal !== 1 ? 's' : ''}
+                    {filteredTotal !== cards.length && ` (of ${cards.length})`}
                   </span>
                 )}
-                <div className="cards-area__view-toggle">
-                  <button
-                    type="button"
-                    className={`cards-area__view-btn ${cardViewMode === 'list' ? 'cards-area__view-btn--active' : ''}`}
-                    onClick={() => setCardViewMode('list')}
-                    aria-pressed={cardViewMode === 'list'}
-                  >
-                    List
-                  </button>
-                  <button
-                    type="button"
-                    className={`cards-area__view-btn ${cardViewMode === 'grid' ? 'cards-area__view-btn--active' : ''}`}
-                    onClick={() => setCardViewMode('grid')}
-                    aria-pressed={cardViewMode === 'grid'}
-                  >
-                    Grid
-                  </button>
+                <div className="cards-area__header-actions">
+                  {cards.length > 0 && (
+                    <CardsFilterPopover
+                      cards={cards}
+                      selectedColors={selectedColors}
+                      selectedReasons={selectedReasons}
+                      sortOption={sortOption}
+                      isLoadingReasons={isLoadingReasons}
+                      onColorsChange={(c) => {
+                        setSelectedColors(c)
+                        setPage(1)
+                      }}
+                      onReasonsChange={(r) => {
+                        setSelectedReasons(r)
+                        setPage(1)
+                      }}
+                      onSortChange={(o) => {
+                        setSortOption(o)
+                        setPage(1)
+                      }}
+                    />
+                  )}
+                  <div className="cards-area__view-toggle">
+                    <button
+                      type="button"
+                      className={`cards-area__view-btn ${cardViewMode === 'list' ? 'cards-area__view-btn--active' : ''}`}
+                      onClick={() => setCardViewMode('list')}
+                      aria-pressed={cardViewMode === 'list'}
+                    >
+                      List
+                    </button>
+                    <button
+                      type="button"
+                      className={`cards-area__view-btn ${cardViewMode === 'grid' ? 'cards-area__view-btn--active' : ''}`}
+                      onClick={() => setCardViewMode('grid')}
+                      aria-pressed={cardViewMode === 'grid'}
+                    >
+                      Grid
+                    </button>
+                  </div>
                 </div>
               </div>
+              {cards.length > 0 && (
+                <div className="cards-area__pagination">
+                  <CardsPagination
+                    totalItems={filteredTotal}
+                    page={page}
+                    pageSize={pageSize}
+                    onPageChange={setPage}
+                    onPageSizeChange={setPageSize}
+                  />
+                </div>
+              )}
               <div ref={cardsAreaRef} className="cards-area__scroll">
                 {cardViewMode === 'list' ? (
                   <CardList
-                    cards={cards}
+                    cards={paginatedCards}
                     isLoading={isLoading || isResponding}
                     error={error}
                     scrollContainerRef={cardsAreaRef}
                     onCardClick={setSelectedCard}
+                    rankOffset={(page - 1) * pageSize}
                   />
                 ) : (
                   <CardGrid
-                    cards={cards}
+                    cards={paginatedCards}
                     isLoading={isLoading || isResponding}
                     error={error}
                     scrollContainerRef={cardsAreaRef}
                     onCardClick={setSelectedCard}
+                    isLoadingReasons={isLoadingReasons}
                   />
                 )}
               </div>
@@ -189,7 +267,7 @@ function App() {
             >
               Ask for advice about Magic's{' '}
               {globalCardCount != null ? globalCardCount.toLocaleString() : '30,000+'}{' '}
-              cards, rules, formats, or strategies.
+              cards.
             </motion.p>
             <ChatBox onSubmit={handleSend} />
             <p className="app__disclaimer">

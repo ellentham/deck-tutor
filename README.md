@@ -85,7 +85,7 @@ deck-tutor/
 │   ├── hooks/        # useScryfallSearch, useMentionedCards, useMediaQuery, useLazyLoad
 │   ├── lib/          # llmChat, promptParser, scryfallApi, cardSort, mentionedCards
 │   └── types/        # Card type definitions
-├── deck-tutor-mcp/   # MCP resources (synergy, format rules) + extract_strategy_from_card tool
+├── server/context/      # Deck-building context (synergy, format rules) for LLM
 ├── docs/             # ARCHITECTURE.md (data flow, API reference)
 └── .env              # API keys (copy from .env.example)
 ```

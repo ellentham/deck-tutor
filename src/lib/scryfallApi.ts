@@ -5,6 +5,7 @@
  * @see https://scryfall.com/docs/api/bulk-data
  */
 
+import type { Card } from '../types/card'
 import type { ScryfallCard, ScryfallList, ScryfallError, BulkDataItem } from './scryfallTypes'
 import {
   getCached,
@@ -74,6 +75,37 @@ function getScryfallUri(card: ScryfallCard): string {
   return `https://scryfall.com/search?q=!"${encodeURIComponent(card.name)}"`
 }
 
+/** Fetch card by name via backend proxy. Returns null if not found or on error. */
+export async function fetchCardByName(name: string): Promise<Card | null> {
+  try {
+    const res = await fetch(`/api/scryfall/card?name=${encodeURIComponent(name)}`)
+    if (!res.ok) return null
+    const data = (await res.json()) as {
+      id?: string
+      name?: string
+      typeLine?: string
+      manaCost?: string
+      imageUrl?: string
+      oracleText?: string
+      scryfallUri?: string
+    }
+    if (data.imageUrl && data.name) {
+      return {
+        id: data.id ?? data.name,
+        name: data.name,
+        typeLine: data.typeLine ?? '',
+        manaCost: data.manaCost ?? '',
+        imageUrl: data.imageUrl,
+        oracleText: data.oracleText ?? '',
+        scryfallUri: data.scryfallUri ?? '',
+      }
+    }
+    return null
+  } catch {
+    return null
+  }
+}
+
 /** Map Scryfall card to our Card interface */
 export function toAppCard(card: ScryfallCard): {
   id: string
@@ -83,7 +115,11 @@ export function toAppCard(card: ScryfallCard): {
   imageUrl: string
   oracleText: string
   scryfallUri: string
+  colorIdentity: string[]
+  priceUsd: number | null
 } {
+  const priceStr = card.prices?.usd ?? card.prices?.usd_foil ?? null
+  const priceUsd = priceStr != null ? parseFloat(priceStr) : null
   return {
     id: card.id,
     name: card.name,
@@ -92,6 +128,8 @@ export function toAppCard(card: ScryfallCard): {
     imageUrl: getCardImageUrl(card),
     oracleText: getOracleText(card),
     scryfallUri: getScryfallUri(card),
+    colorIdentity: card.color_identity ?? [],
+    priceUsd: Number.isNaN(priceUsd) ? null : priceUsd,
   }
 }
 

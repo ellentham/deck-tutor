@@ -37,6 +37,7 @@ export interface ScryfallCard {
   rarity?: string
   colors?: string[]
   color_identity?: string[]
+  prices?: { usd?: string | null; usd_foil?: string | null }
 }
 
 export interface ScryfallList {

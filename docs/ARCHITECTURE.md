@@ -93,7 +93,7 @@ Deck Tutor converts natural language prompts into Magic: The Gathering card sear
 
 | Step | Component | Action |
 |------|-----------|--------|
-| 1 | `loadMCPContext()` | Reads markdown files from `deck-tutor-mcp/resources/`: `synergy-criteria.md`, `format-rules/commander.md`, `format-rules/standard.md`, `comparison-priorities.md`, `strategy-examples.md`, `scryfall-keywords.md` |
+| 1 | `loadMCPContext()` | Reads markdown files from `server/context/`: `synergy-criteria.md`, `format-rules/commander.md`, `format-rules/standard.md`, `comparison-priorities.md`, `strategy-examples.md`, `scryfall-keywords.md` |
 | 2 | `fullSystem` | Concatenates: `SYSTEM_PROMPT` + `"\n\n## Deck-building context (use when relevant)\n"` + `mcpContext` |
 | 3 | LLM call | **Gemini**: `generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent` with `systemInstruction` + `contents` |
 | 4 | LLM call | **OpenAI** (fallback): `api.openai.com/v1/chat/completions` with `model: gpt-4o-mini`, `response_format: { type: "json_object" }` |
@@ -197,19 +197,19 @@ When `chatWithLLM` returns `null` (503, 502, network error):
 
 | Context | Usage |
 |---------|-------|
-| **Backend** | Reads `deck-tutor-mcp/resources/*.md` from disk and injects into LLM system prompt. **Does not** connect to MCP server. |
-| **Cursor IDE** | `deck-tutor-mcp` runs as MCP server (stdio); Cursor fetches resources and calls tools when assisting with deck-building code. |
+| **Backend** | Reads `server/context/*.md` and injects into LLM system prompt. **Does not** connect to MCP server. |
+| **Cursor IDE** | `deck-tutor-mcp` (sibling package) runs as MCP server (stdio); Cursor fetches resources and calls tools when assisting with deck-building code. |
 
-### deck-tutor-mcp Server
+### deck-tutor-mcp package (optional, for Cursor)
 
 - **Transport**: stdio (for Cursor)
 - **Resources**: 16 markdown files (synergy criteria, format rules, strategy examples, Scryfall keywords, comprehensive rules)
 - **Tool**: `extract_strategy_from_card(cardName)` → fetches card from Scryfall, parses oracle text, returns strategy (creature types, mechanics, triggers, suggested Scryfall query)
 
-### Backend MCP Context (files read from disk)
+### Backend context (self-contained in project)
 
 ```
-deck-tutor-mcp/resources/
+server/context/
 ├── synergy-criteria.md
 ├── format-rules/commander.md
 ├── format-rules/standard.md
@@ -336,5 +336,5 @@ Filtering and pagination are applied client-side in `App.tsx` via `filterCardsBy
 | `src/lib/scryfallApi.ts` | Search, named lookup, caching |
 | `src/hooks/useScryfallSearch.ts` | Card state, search, reasons, `setCardsFromResponse` |
 | `server/index.ts` | Express API, LLM calls, Scryfall proxy, full search+reasons pipeline |
-| `deck-tutor-mcp/src/index.ts` | MCP server (resources + tools) |
+| `deck-tutor-mcp` (sibling) | MCP server (resources + tools) |
 | `vite.config.ts` | Proxy `/api` → `localhost:3001` |

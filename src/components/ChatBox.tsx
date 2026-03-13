@@ -8,7 +8,7 @@ interface ChatBoxProps {
   className?: string
 }
 
-export function ChatBox({ onSubmit, placeholder = 'Ask about cards, formats, or deck building...', className = '' }: ChatBoxProps) {
+export function ChatBox({ onSubmit, placeholder = 'Ask about cards or deck building...', className = '' }: ChatBoxProps) {
   const [value, setValue] = useState('')
   const textareaRef = useRef<HTMLTextAreaElement>(null)
 

@@ -57,6 +57,12 @@ async function loadMCPContext(): Promise<string> {
   } catch {
     /* ignore */
   }
+  try {
+    const rulesUpdate = await readFile(join(RESOURCES_DIR, 'comprehensive-rules-update.md'), 'utf-8')
+    parts.push('## Comprehensive Rules (September 25, 2026)\n' + rulesUpdate)
+  } catch {
+    /* ignore */
+  }
   return parts.join('\n\n')
 }
 

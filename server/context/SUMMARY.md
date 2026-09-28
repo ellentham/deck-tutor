@@ -51,10 +51,20 @@ This folder contains the markdown files injected into the LLM system prompt for 
 
 **Purpose:** When and how to use `kw:` in Scryfall queries.
 
-- **Rule:** For keyword abilities (flying, mobilize, lifelink, prowess, etc.), use `kw:keyword` — not `o:keyword`.
-- **Examples:** `kw:flying`, `kw:mobilize`, `kw:prowess`, `kw:"double strike"`.
+- **Rule:** For keyword abilities (flying, mobilize, lifelink, prowess, increment, etc.), use `kw:keyword` — not `o:keyword`.
+- **Examples:** `kw:flying`, `kw:mobilize`, `kw:prowess`, `kw:"double strike"`, `kw:increment`, `kw:storied`.
 - **Combining:** `kw:mobilize t:creature`, `kw:flying id:wubrg`.
 - **Avoid:** Don’t add type filters (t:creature, t:enchantment) just because mentioned cards are that type; extract the ability and use `kw:` alone unless the user asks for a specific type.
+
+---
+
+## Comprehensive Rules (September 25, 2026)
+
+**Purpose:** Official rules for rules questions and new-set mechanics.
+
+- **Source:** `magic-comprehensive-rules.txt` (Wizards, effective September 25, 2026).
+- **Digest:** `comprehensive-rules-update.md` is injected into the LLM prompt.
+- **New:** Preparation Cards (722, prepared/unprepared), Empower Jace (701.71), Increment, Paradigm, Power-up, Teamwork, Storied.
 
 ---
 

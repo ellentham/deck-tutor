@@ -215,7 +215,9 @@ server/context/
 ├── format-rules/standard.md
 ├── comparison-priorities.md
 ├── strategy-examples.md
-└── scryfall-keywords.md
+├── scryfall-keywords.md
+├── comprehensive-rules-update.md
+└── magic-comprehensive-rules.txt
 ```
 
 ---

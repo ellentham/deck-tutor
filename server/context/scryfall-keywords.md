@@ -31,8 +31,13 @@ Do **not** use `o:keyword` (oracle text) for keyword abilities. Oracle text sear
 | indestructible | `kw:indestructible` |
 | double strike | `kw:"double strike"` |
 | first strike | `kw:"first strike"` |
+| increment | `kw:increment` |
+| paradigm | `kw:paradigm` |
+| power-up | `kw:"power-up"` |
+| teamwork | `kw:teamwork` |
+| storied | `kw:storied` |
 
-Scryfall supports 200+ keywords. If the user names any keyword, use `kw:keyword`—even for newer or less common ones (mobilize, blitz, toxic, etc.).
+Scryfall supports 200+ keywords. If the user names any keyword, use `kw:keyword`—even for newer or less common ones (mobilize, increment, paradigm, storied, etc.).
 
 ## Combining with Other Filters
 
